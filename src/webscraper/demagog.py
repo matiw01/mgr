@@ -32,10 +32,22 @@ while True:
             elements = driver.find_elements(By.CLASS_NAME, "medium-6")
             el = elements[processed_count + idx]
 
+            # Validate element structure - check if it has the expected link
+            link_elements = el.find_elements(By.CSS_SELECTOR, "div.dg-item__title a")
+            if not link_elements:
+                print(f"Skipping element {processed_count + idx} - no valid link found")
+                continue
+
             # Get author and class from the list view
             content = el.find_elements(By.TAG_NAME, "p")
             statements = list(map(lambda p: p.text, content))
-            author = el.find_element(By.CLASS_NAME, "dg-item__person").text
+
+            author_elements = el.find_elements(By.CLASS_NAME, "dg-item__person")
+            if not author_elements:
+                print(f"Skipping element {processed_count + idx} - no author found")
+                continue
+
+            author = author_elements[0].text
 
             try:
                 # Try multiple possible locations for date
@@ -63,9 +75,14 @@ while True:
 
             statement_class = statements[0] if len(statements) > 0 else "Unknown"
 
-            # Find and click the link to get full statement
-            link_element = el.find_element(By.CSS_SELECTOR, "div.dg-item__title a")
+            # Get the link URL
+            link_element = link_elements[0]
             link_url = link_element.get_attribute("href")
+
+            # Validate URL is not empty
+            if not link_url or link_url.strip() == "":
+                print(f"Skipping element {processed_count + idx} - empty URL")
+                continue
 
             # Open link in the same window
             driver.get(link_url)
@@ -80,8 +97,26 @@ while True:
                 )
                 statement_p = statement_div.find_element(By.TAG_NAME, "p")
                 statement_text = statement_p.text
-            except:
-                statement_text = statements[1] if len(statements) > 1 else "Unknown"
+
+                # Validate we got actual content
+                if not statement_text or statement_text.strip() == "":
+                    print(f"Skipping element {processed_count + idx} - empty statement on detail page")
+                    driver.back()
+                    WebDriverWait(driver, 10).until(
+                        EC.presence_of_element_located((By.CLASS_NAME, "medium-6"))
+                    )
+                    time.sleep(1)
+                    continue
+
+            except Exception as e:
+                # If we can't find the statement div, this might be an invalid page
+                print(f"Skipping element {processed_count + idx} - could not find statement on detail page: {type(e).__name__}")
+                driver.back()
+                WebDriverWait(driver, 10).until(
+                    EC.presence_of_element_located((By.CLASS_NAME, "medium-6"))
+                )
+                time.sleep(1)
+                continue
 
             # Create data object
             data_object = {
@@ -109,13 +144,22 @@ while True:
             time.sleep(1)
 
         except (NoSuchElementException, StopIteration, Exception) as e:
-            print(f"Error processing element: {type(e).__name__}")
-            # Try to go back if we're on a detail page
-            try:
-                driver.back()
-                time.sleep(1)
-            except:
-                pass
+            print(f"Error processing element {processed_count + idx}: {type(e).__name__}")
+            # Check if we're on a detail page and need to go back
+            current_url = driver.current_url
+            if "wypowiedzi/" in current_url and current_url != "https://demagog.org.pl/wypowiedzi/":
+                try:
+                    print("Attempting to go back to list page...")
+                    driver.back()
+                    WebDriverWait(driver, 10).until(
+                        EC.presence_of_element_located((By.CLASS_NAME, "medium-6"))
+                    )
+                    time.sleep(1)
+                except Exception as back_error:
+                    print(f"Failed to go back: {type(back_error).__name__}")
+                    # If we can't go back, navigate directly to the main page
+                    driver.get("https://demagog.org.pl/wypowiedzi/")
+                    time.sleep(2)
 
     # Update the count of processed elements
     processed_count = len(elements)
