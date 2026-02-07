@@ -4,9 +4,26 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 import time
+import json
+import os
 
 driver = webdriver.Chrome()
 driver.get("https://demagog.org.pl/wypowiedzi/")
+
+def get_date():
+    try:
+        header = driver.find_element(By.CLASS_NAME, "dg-item__header-info")
+        spans = header.find_elements(By.TAG_NAME, "span")
+        if len(spans) > 0:
+            return spans[0].text
+    except NoSuchElementException:
+        return "Unknown Date"
+
+# Path to JSON file
+json_file_path = os.path.join(os.path.dirname(__file__), "..", "..", "data", "demagog-data.json")
+
+# List to store all collected data
+all_data = []
 
 processed_count = 0
 i = 0
@@ -23,15 +40,37 @@ while True:
             content = el.find_elements(By.TAG_NAME, "p")
             statements = map(lambda p: p.text, content)
             author = el.find_element(By.CLASS_NAME, "dg-item__person").text
+            date = get_date()
+
+            statement_class = next(statements)
+            statement_text = next(statements)
+
+            # Create data object
+            data_object = {
+                "Author": author,
+                "Class": statement_class,
+                "Statement": statement_text,
+                "Date": date
+            }
+
+            all_data.append(data_object)
+
             print(f"Author: {author}")
-            print(f"Class: {next(statements)}")
-            print(f"statement: {next(statements)}")
+            print(f"Class: {statement_class}")
+            print(f"Statement: {statement_text}")
+            print(f"Date: {date}")
             print("\n---")
-        except NoSuchElementException:
+        except (NoSuchElementException, StopIteration):
             pass
 
     # Update the count of processed elements
     processed_count = len(elements)
+
+    # Save data to JSON file after processing new elements
+    if new_elements:
+        with open(json_file_path, 'w', encoding='utf-8') as f:
+            json.dump(all_data, f, ensure_ascii=False, indent=2)
+        print(f"Saved {len(all_data)} records to {json_file_path}")
 
     # Check if there are more pages to load
     try:
@@ -63,8 +102,8 @@ while True:
         print(f"Loaded batch {i}, total elements: {len(driver.find_elements(By.CLASS_NAME, 'medium-6'))}")
 
         # Remove the test limit or adjust as needed
-        # if i > 1:
-        #     break
+        if i > 1:
+            break
     except Exception as e:
         print(f"No more Load More button found or error occurred: {type(e).__name__}")
         print("All content loaded.")
