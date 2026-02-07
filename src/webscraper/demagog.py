@@ -1,5 +1,4 @@
 from selenium import webdriver
-from selenium.common import NoSuchElementException
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
@@ -16,27 +15,44 @@ json_file_path = os.path.join(os.path.dirname(__file__), "..", "..", "data", "de
 # List to store all collected data
 all_data = []
 
-processed_count = 0
+# Track URLs we've already processed to avoid duplicates
+processed_urls = set()
 i = 0
 
 while True:
     # Get all elements
     elements = driver.find_elements(By.CLASS_NAME, "medium-6")
 
-    # Process only new elements (skip already processed)
-    new_elements = elements[processed_count:]
+    elements_processed_in_batch = 0
+    elements_to_process = []
 
-    for idx, el in enumerate(new_elements):
+    # First pass: collect URLs that need processing
+    for idx, el in enumerate(elements):
         try:
-            # Re-fetch elements to avoid stale element reference after going back
-            elements = driver.find_elements(By.CLASS_NAME, "medium-6")
-            el = elements[processed_count + idx]
-
-            # Validate element structure - check if it has the expected link
             link_elements = el.find_elements(By.CSS_SELECTOR, "div.dg-item__title a")
             if not link_elements:
-                print(f"Skipping element {processed_count + idx} - no valid link found")
                 continue
+
+            link_url = link_elements[0].get_attribute("href")
+            if not link_url or link_url.strip() == "" or link_url in processed_urls:
+                continue
+
+            elements_to_process.append((idx, link_url))
+        except Exception as e:
+            continue
+
+    # Second pass: process each URL
+    for idx, link_url in elements_to_process:
+        try:
+            # Re-fetch elements to avoid stale references
+            elements = driver.find_elements(By.CLASS_NAME, "medium-6")
+            if idx >= len(elements):
+                continue
+
+            el = elements[idx]
+
+            # Mark this URL as processed
+            processed_urls.add(link_url)
 
             # Get author and class from the list view
             content = el.find_elements(By.TAG_NAME, "p")
@@ -44,53 +60,19 @@ while True:
 
             author_elements = el.find_elements(By.CLASS_NAME, "dg-item__person")
             if not author_elements:
-                print(f"Skipping element {processed_count + idx} - no author found")
+                print(f"Skipping element {idx} - no author found")
                 continue
 
             author = author_elements[0].text
-
-            try:
-                # Try multiple possible locations for date
-                date = "Unknown Date"
-
-                # Try header info first
-                try:
-                    header = driver.find_element(By.CLASS_NAME, "dg-item__header-info")
-                    spans = header.find_elements(By.TAG_NAME, "span")
-                    if len(spans) > 0:
-                        date = spans[0].text
-                except:
-                    pass
-
-                # If still unknown, try other common locations
-                if date == "Unknown Date":
-                    try:
-                        date_element = driver.find_element(By.CSS_SELECTOR, ".dg-post-quote__date, .statement-date, .post-date")
-                        date = date_element.text
-                    except:
-                        pass
-
-            except:
-                date = "Unknown Date"
-
             statement_class = statements[0] if len(statements) > 0 else "Unknown"
-
-            # Get the link URL
-            link_element = link_elements[0]
-            link_url = link_element.get_attribute("href")
-
-            # Validate URL is not empty
-            if not link_url or link_url.strip() == "":
-                print(f"Skipping element {processed_count + idx} - empty URL")
-                continue
 
             # Open link in the same window
             driver.get(link_url)
 
             # Wait for the statement page to load
-            time.sleep(1)
+            time.sleep(1.5)
 
-            # Get the full statement from the detail page
+            # Get the full statement and date from the detail page
             try:
                 statement_div = WebDriverWait(driver, 10).until(
                     EC.presence_of_element_located((By.CLASS_NAME, "dg-post-quote__statement"))
@@ -100,23 +82,36 @@ while True:
 
                 # Validate we got actual content
                 if not statement_text or statement_text.strip() == "":
-                    print(f"Skipping element {processed_count + idx} - empty statement on detail page")
+                    print(f"Skipping URL {link_url} - empty statement on detail page")
                     driver.back()
-                    WebDriverWait(driver, 10).until(
-                        EC.presence_of_element_located((By.CLASS_NAME, "medium-6"))
-                    )
                     time.sleep(1)
                     continue
 
             except Exception as e:
                 # If we can't find the statement div, this might be an invalid page
-                print(f"Skipping element {processed_count + idx} - could not find statement on detail page: {type(e).__name__}")
-                driver.back()
-                WebDriverWait(driver, 10).until(
-                    EC.presence_of_element_located((By.CLASS_NAME, "medium-6"))
-                )
-                time.sleep(1)
+                print(f"Skipping URL {link_url} - could not find statement on detail page: {type(e).__name__}")
+                try:
+                    driver.back()
+                    time.sleep(1)
+                except:
+                    # Session might be dead, break
+                    print("Session lost, stopping...")
+                    break
                 continue
+
+            # Get date from detail page (from dg-post-quote__source div)
+            date = "Unknown Date"
+            try:
+                source_div = driver.find_element(By.CLASS_NAME, "dg-post-quote__source")
+                span = source_div.find_element(By.TAG_NAME, "span")
+                source_text = span.text  # Format: "Title, DD.MM.YYYY"
+
+                # Extract date from the text (everything after the last comma)
+                if "," in source_text:
+                    date = source_text.split(",")[-1].strip()
+            except Exception as e:
+                print(f"Could not extract date from detail page: {type(e).__name__}")
+                date = "Unknown Date"
 
             # Create data object
             data_object = {
@@ -127,6 +122,7 @@ while True:
             }
 
             all_data.append(data_object)
+            elements_processed_in_batch += 1
 
             print(f"Author: {author}")
             print(f"Class: {statement_class}")
@@ -135,37 +131,35 @@ while True:
             print("\n---")
 
             # Go back to the list page
-            driver.back()
+            try:
+                driver.back()
+                time.sleep(1.5)
+            except Exception as e:
+                print(f"Could not go back: {type(e).__name__}")
+                # Session might be dead
+                break
 
-            # Wait for the list to load again
-            WebDriverWait(driver, 10).until(
-                EC.presence_of_element_located((By.CLASS_NAME, "medium-6"))
-            )
-            time.sleep(1)
+        except Exception as e:
+            print(f"Error processing URL {link_url}: {type(e).__name__}")
+            # Check if session is still alive
+            try:
+                current_url = driver.current_url
+                # If we're on a detail page, try to go back
+                if "wypowiedzi/" in current_url and current_url != "https://demagog.org.pl/wypowiedzi/":
+                    try:
+                        driver.back()
+                        time.sleep(1)
+                    except:
+                        # Navigate directly to main page
+                        driver.get("https://demagog.org.pl/wypowiedzi/")
+                        time.sleep(2)
+            except:
+                # Session is dead, stop processing
+                print("Session lost, stopping this batch...")
+                break
 
-        except (NoSuchElementException, StopIteration, Exception) as e:
-            print(f"Error processing element {processed_count + idx}: {type(e).__name__}")
-            # Check if we're on a detail page and need to go back
-            current_url = driver.current_url
-            if "wypowiedzi/" in current_url and current_url != "https://demagog.org.pl/wypowiedzi/":
-                try:
-                    print("Attempting to go back to list page...")
-                    driver.back()
-                    WebDriverWait(driver, 10).until(
-                        EC.presence_of_element_located((By.CLASS_NAME, "medium-6"))
-                    )
-                    time.sleep(1)
-                except Exception as back_error:
-                    print(f"Failed to go back: {type(back_error).__name__}")
-                    # If we can't go back, navigate directly to the main page
-                    driver.get("https://demagog.org.pl/wypowiedzi/")
-                    time.sleep(2)
-
-    # Update the count of processed elements
-    processed_count = len(elements)
-
-    # Save data to JSON file after processing new elements
-    if new_elements:
+    # Save data to JSON file after processing elements in this batch
+    if elements_processed_in_batch > 0:
         with open(json_file_path, 'w', encoding='utf-8') as f:
             json.dump(all_data, f, ensure_ascii=False, indent=2)
         print(f"Saved {len(all_data)} records to {json_file_path}")
@@ -189,7 +183,7 @@ while True:
         driver.execute_script("arguments[0].click();", load_more_button)
 
         # Wait for new content to load - wait for element count to increase
-        old_count = processed_count
+        old_count = len(elements)
         for _ in range(10):  # Try for up to 5 seconds
             time.sleep(0.5)
             current_elements = driver.find_elements(By.CLASS_NAME, "medium-6")
