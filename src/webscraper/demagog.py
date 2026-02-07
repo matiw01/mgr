@@ -66,6 +66,16 @@ while True:
             author = author_elements[0].text
             statement_class = statements[0] if len(statements) > 0 else "Unknown"
 
+            # Get date from the list view (before navigating to detail page)
+            date = "Unknown Date"
+            try:
+                header_info = el.find_element(By.CLASS_NAME, "dg-item__header-info")
+                date_span = header_info.find_element(By.TAG_NAME, "span")
+                date = date_span.text
+            except Exception as e:
+                print(f"Could not extract date from list view: {type(e).__name__}")
+                date = "Unknown Date"
+
             # Open link in the same window
             driver.get(link_url)
 
@@ -99,19 +109,6 @@ while True:
                     break
                 continue
 
-            # Get date from detail page (from dg-post-quote__source div)
-            date = "Unknown Date"
-            try:
-                source_div = driver.find_element(By.CLASS_NAME, "dg-post-quote__source")
-                span = source_div.find_element(By.TAG_NAME, "span")
-                source_text = span.text  # Format: "Title, DD.MM.YYYY"
-
-                # Extract date from the text (everything after the last comma)
-                if "," in source_text:
-                    date = source_text.split(",")[-1].strip()
-            except Exception as e:
-                print(f"Could not extract date from detail page: {type(e).__name__}")
-                date = "Unknown Date"
 
             # Create data object
             data_object = {
