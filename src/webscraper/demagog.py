@@ -5,6 +5,16 @@ from selenium.webdriver.support import expected_conditions as EC
 import time
 import json
 import os
+import argparse
+
+# Parse command line arguments
+parser = argparse.ArgumentParser(description='Scrape data from demagog.org.pl')
+parser.add_argument('--skip', type=int, default=0,
+                    help='Number of elements to skip from the beginning of the list before saving (default: 0)')
+args = parser.parse_args()
+
+skip_count = args.skip
+print(f"Starting webscraper. Will skip first {skip_count} elements.")
 
 driver = webdriver.Chrome()
 driver.get("https://demagog.org.pl/wypowiedzi/")
@@ -15,9 +25,23 @@ json_file_path = os.path.join(os.path.dirname(__file__), "..", "..", "data", "de
 # List to store all collected data
 all_data = []
 
-# Track URLs we've already processed to avoid duplicates
+# Load existing data if file exists
+if os.path.exists(json_file_path):
+    try:
+        with open(json_file_path, 'r', encoding='utf-8') as f:
+            all_data = json.load(f)
+        print(f"Loaded {len(all_data)} existing records from {json_file_path}")
+    except Exception as e:
+        print(f"Could not load existing data: {type(e).__name__}. Starting fresh.")
+        all_data = []
+else:
+    print("No existing data file found. Starting fresh.")
+
+# Track URLs and statements we've already processed to avoid duplicates
+processed_statements = {item['Statement'] for item in all_data if 'Statement' in item}
 processed_urls = set()
 i = 0
+total_elements_seen = 0  # Counter for all elements seen (for skip logic)
 
 while True:
     # Get all elements
