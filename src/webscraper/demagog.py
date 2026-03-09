@@ -42,6 +42,7 @@ processed_statements = {item['Statement'] for item in all_data if 'Statement' in
 processed_urls = set()
 i = 0
 total_elements_seen = 0  # Counter for all elements seen (for skip logic)
+elements_checked_count = 0  # Track how many elements we've already checked
 
 while True:
     # Get all elements
@@ -51,19 +52,44 @@ while True:
     elements_to_process = []
 
     # First pass: collect URLs that need processing
-    for idx, el in enumerate(elements):
+    # Only check NEW elements (from elements_checked_count onwards)
+    print(f"Total elements on page: {len(elements)}, already checked: {elements_checked_count}")
+    for idx in range(elements_checked_count, len(elements)):
+        el = elements[idx]
         try:
             link_elements = el.find_elements(By.CSS_SELECTOR, "div.dg-item__title a")
             if not link_elements:
+                print(f"Skipping element {idx} - no link found")
+                elements_checked_count = idx + 1
                 continue
 
             link_url = link_elements[0].get_attribute("href")
-            if not link_url or link_url.strip() == "" or link_url in processed_urls:
+            if not link_url or link_url.strip() == "":
+                print(f"Skipping element {idx} - empty URL")
+                elements_checked_count = idx + 1
+                continue
+
+            # Skip if already processed
+            if link_url in processed_urls:
+                print(f"Skipping element {idx} - URL already processed: {link_url}")
+                elements_checked_count = idx + 1
+                continue
+
+            # Check if we should skip based on skip_count
+            if total_elements_seen < skip_count:
+                total_elements_seen += 1
+                print(f"Skipping element {total_elements_seen}/{skip_count} (URL: {link_url})")
+                processed_urls.add(link_url)  # Mark as processed so we don't try again
+                elements_checked_count = idx + 1
                 continue
 
             elements_to_process.append((idx, link_url))
         except Exception as e:
+            elements_checked_count = idx + 1
             continue
+
+    # Update elements_checked_count to total number of elements after checking all new ones
+    elements_checked_count = len(elements)
 
     # Second pass: process each URL
     for idx, link_url in elements_to_process:
@@ -100,8 +126,12 @@ while True:
                 print(f"Could not extract date from list view: {type(e).__name__}")
                 date = "Unknown Date"
 
-            # Open link in the same window
-            driver.get(link_url)
+            # Open link in a new tab to preserve the main page state
+            main_window = driver.current_window_handle
+            driver.execute_script("window.open(arguments[0], '_blank');", link_url)
+
+            # Switch to the new tab
+            driver.switch_to.window(driver.window_handles[-1])
 
             # Wait for the statement page to load
             time.sleep(1.5)
@@ -117,22 +147,31 @@ while True:
                 # Validate we got actual content
                 if not statement_text or statement_text.strip() == "":
                     print(f"Skipping URL {link_url} - empty statement on detail page")
-                    driver.back()
-                    time.sleep(1)
+                    driver.close()
+                    driver.switch_to.window(main_window)
+                    time.sleep(0.5)
                     continue
 
             except Exception as e:
                 # If we can't find the statement div, this might be an invalid page
                 print(f"Skipping URL {link_url} - could not find statement on detail page: {type(e).__name__}")
                 try:
-                    driver.back()
-                    time.sleep(1)
+                    driver.close()
+                    driver.switch_to.window(main_window)
+                    time.sleep(0.5)
                 except:
                     # Session might be dead, break
                     print("Session lost, stopping...")
                     break
                 continue
 
+            # Check if this statement already exists in our data
+            if statement_text in processed_statements:
+                print(f"Skipping duplicate statement: {statement_text[:50]}...")
+                driver.close()
+                driver.switch_to.window(main_window)
+                time.sleep(0.5)
+                continue
 
             # Create data object
             data_object = {
@@ -143,37 +182,37 @@ while True:
             }
 
             all_data.append(data_object)
+            processed_statements.add(statement_text)
             elements_processed_in_batch += 1
+            total_elements_seen += 1
 
+            print(f"Processed element {total_elements_seen} (after skipping {skip_count})")
             print(f"Author: {author}")
             print(f"Class: {statement_class}")
             print(f"Statement: {statement_text[:100]}...")
             print(f"Date: {date}")
             print("\n---")
 
-            # Go back to the list page
+            # Close the detail tab and go back to the main list tab
             try:
-                driver.back()
-                time.sleep(1.5)
+                print("Closing detail tab and returning to list...")
+                driver.close()
+                driver.switch_to.window(main_window)
+                time.sleep(0.5)
             except Exception as e:
-                print(f"Could not go back: {type(e).__name__}")
+                print(f"Could not close tab: {type(e).__name__}")
                 # Session might be dead
                 break
 
         except Exception as e:
             print(f"Error processing URL {link_url}: {type(e).__name__}")
-            # Check if session is still alive
+            # Check if session is still alive and close any open tabs
             try:
-                current_url = driver.current_url
-                # If we're on a detail page, try to go back
-                if "wypowiedzi/" in current_url and current_url != "https://demagog.org.pl/wypowiedzi/":
-                    try:
-                        driver.back()
-                        time.sleep(1)
-                    except:
-                        # Navigate directly to main page
-                        driver.get("https://demagog.org.pl/wypowiedzi/")
-                        time.sleep(2)
+                # If we have multiple windows/tabs, close the current one and switch to main
+                if len(driver.window_handles) > 1:
+                    driver.close()
+                    driver.switch_to.window(driver.window_handles[0])
+                    time.sleep(0.5)
             except:
                 # Session is dead, stop processing
                 print("Session lost, stopping this batch...")
