@@ -25,7 +25,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from data_loader import load_data
 from prompts import get_prompts, get_verdict_field, get_valid_labels
-from llm_client import create_client
+from llm_client import create_client, PROVIDERS
 from evaluator import compute_metrics, print_metrics
 
 logging.basicConfig(
@@ -77,6 +77,7 @@ def run_classification(
     data_file: str,
     output_dir: str | None = None,
     limit: int | None = None,
+    provider: str | None = None,
 ) -> None:
     """Przeprowadza klasyfikację wszystkich wypowiedzi ze zbioru danych."""
 
@@ -95,8 +96,8 @@ def run_classification(
     valid_labels = get_valid_labels(dataset_type)
 
     # 3. Inicjalizacja klienta LLM
-    logger.info(f"Inicjalizacja modelu: {model_name}")
-    client = create_client(model_name)
+    logger.info(f"Inicjalizacja modelu: {model_name}" + (f" (provider: {provider})" if provider else ""))
+    client = create_client(model_name, provider=provider)
 
     # 4. Klasyfikacja
     results: list[dict] = []
@@ -179,6 +180,7 @@ def run_classification(
 
     output_data = {
         "model": model_name,
+        "provider": client.model_name and provider or "auto",
         "dataset_type": dataset_type,
         "data_file": os.path.abspath(data_file),
         "timestamp": timestamp,
@@ -203,10 +205,11 @@ def main() -> None:
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""\
 Przykłady użycia:
-  python -m reserch_first_step -m gemini-2.5-flash-lite -d src/data/demagog-data.json
-  python -m reserch_first_step -m gemini-2.5-flash-lite -d src/data/train.tsv
-  python -m reserch_first_step -m llama3.2:1b -d src/data/demagog-data.json
-  python -m reserch_first_step -m gemini-2.5-flash-lite -d src/data/train.tsv --limit 50
+  python -m reserch_first_step -m gemini-2.5-flash-lite -d data/demagog-data.json
+  python -m reserch_first_step -m gemini-2.5-flash-lite -d data/train.tsv
+  python -m reserch_first_step -m llama-3.3-70b-versatile -p groq -d data/demagog-data.json
+  python -m reserch_first_step -m llama3.2:1b -p ollama -d data/demagog-data.json
+  python -m reserch_first_step -m gemini-2.5-flash-lite -d data/train.tsv --limit 50
         """,
     )
 
@@ -214,9 +217,18 @@ Przykłady użycia:
         "--model", "-m",
         required=True,
         help=(
-            "Nazwa modelu LLM. Jeśli zawiera 'gemini' → użyje Google Gemini API, "
-            "w przeciwnym razie → Ollama. "
-            "Np.: 'gemini-2.5-flash-lite', 'llama3.2:1b', 'mistral'"
+            "Nazwa modelu LLM. "
+            "Np.: 'gemini-2.5-flash-lite', 'llama-3.3-70b-versatile', 'llama3.2:1b'"
+        ),
+    )
+    parser.add_argument(
+        "--provider", "-p",
+        choices=list(PROVIDERS),
+        default=None,
+        help=(
+            "Dostawca LLM: 'google' (Gemini API), 'groq' (Groq Cloud), 'ollama' (lokalny). "
+            "Domyślnie: auto-detekcja na podstawie nazwy modelu "
+            "('gemini'→google, 'groq'→groq, inne→ollama)."
         ),
     )
     parser.add_argument(
@@ -243,6 +255,7 @@ Przykłady użycia:
         data_file=args.data,
         output_dir=args.output,
         limit=args.limit,
+        provider=args.provider,
     )
 
 
