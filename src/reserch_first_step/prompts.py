@@ -55,7 +55,7 @@ adwersarza, pozamerytoryczne sposoby argumentowania.
 
 W kolejnych wiadomościach otrzymasz wypowiedzi do zaklasyfikowania. \
 Dla każdej z nich odpowiedz w formacie:
-WERDYKT: <Prawda|Fałsz|Manipulacja|Częściowa Prawda>
+WERDYKT: <Prawda|Fałsz|Manipulacja|Częściowa prawda>
 UZASADNIENIE: <tekst uzasadnienia>
 """
 
@@ -64,7 +64,7 @@ Twierdzenie do zaklasyfikowania:
 {statement}
 
 Odpowiedz w formacie:
-WERDYKT: <Prawda|Fałsz|Manipulacja|Częściowa Prawda>
+WERDYKT: <Prawda|Fałsz|Manipulacja|Częściowa prawda>
 UZASADNIENIE: <tekst uzasadnienia>
 """
 
@@ -129,7 +129,7 @@ def get_verdict_field(dataset_type: str) -> str:
 def get_valid_labels(dataset_type: str) -> List[str]:
     """Zwraca listę poprawnych etykiet dla danego zbioru."""
     if dataset_type == "demagog":
-        return ["Prawda", "Fałsz", "Manipulacja", "Częściowa Prawda"]
+        return ["Prawda", "Fałsz", "Manipulacja", "Częściowa prawda"]
     elif dataset_type == "liar":
         return ["True", "Mostly True", "Half True", "Mostly False", "False", "Pants on Fire"]
     else:
