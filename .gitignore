@@ -1,4 +1,4 @@
-data
+src/data
 *.pdf
 .venv
 .idea

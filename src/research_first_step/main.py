@@ -2,12 +2,12 @@
 """Główny moduł – CLI pierwszego etapu badań.
 
 Użycie:
-    python -m reserch_first_step --model <nazwa_modelu> --data <ścieżka_do_pliku>
+    python -m research_first_step --model <nazwa_modelu> --data <ścieżka_do_pliku>
 
 Przykłady:
-    python -m reserch_first_step --model gemini-2.5-flash-lite --data src/data/demagog-data.json
-    python -m reserch_first_step --model gemini-2.5-flash-lite --data src/data/train.tsv
-    python -m reserch_first_step --model llama3.2:1b --data src/data/demagog-data.json --limit 20
+    python -m research_first_step --model gemini-2.5-flash-lite --data src/data/demagog-data.json
+    python -m research_first_step --model gemini-2.5-flash-lite --data src/data/train.tsv
+    python -m research_first_step --model llama3.2:1b --data src/data/demagog-data.json --limit 20
 """
 
 from __future__ import annotations
@@ -205,11 +205,11 @@ def main() -> None:
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""\
 Przykłady użycia:
-  python -m reserch_first_step -m gemini-2.5-flash-lite -d data/demagog-data.json
-  python -m reserch_first_step -m gemini-2.5-flash-lite -d data/train.tsv
-  python -m reserch_first_step -m llama-3.3-70b-versatile -p groq -d data/demagog-data.json
-  python -m reserch_first_step -m llama3.2:1b -p ollama -d data/demagog-data.json
-  python -m reserch_first_step -m gemini-2.5-flash-lite -d data/train.tsv --limit 50
+  python -m research_first_step -m gemini-2.5-flash-lite -d data/demagog-data.json
+  python -m research_first_step -m gemini-2.5-flash-lite -d data/train.tsv
+  python -m research_first_step -m llama-3.3-70b-versatile -p groq -d data/demagog-data.json
+  python -m research_first_step -m llama3.2:1b -p ollama -d data/demagog-data.json
+  python -m research_first_step -m gemini-2.5-flash-lite -d data/train.tsv --limit 50
         """,
     )
 
@@ -239,7 +239,7 @@ Przykłady użycia:
     parser.add_argument(
         "--output", "-o",
         default=None,
-        help="Katalog na wyniki (domyślnie: reserch_first_step/results/)",
+        help="Katalog na wyniki (domyślnie: research_first_step/results/)",
     )
     parser.add_argument(
         "--limit", "-l",
