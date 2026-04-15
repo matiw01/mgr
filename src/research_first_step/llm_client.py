@@ -131,7 +131,43 @@ class OllamaClient(LLMClient):
         return response.json()["message"]["content"]
 
 
-PROVIDERS = ("google", "groq", "ollama")
+class OpenRouterClient(LLMClient):
+    """Klient OpenRouter API (kompatybilny z OpenAI)."""
+
+    def __init__(self, model: str):
+        from openai import OpenAI  # type: ignore
+
+        api_key = os.environ.get("OPEN_ROUTER_API_KEY")
+        if not api_key or api_key == "placeholder":
+            raise ValueError(
+                "Brak klucza API OpenRouter. Ustaw OPEN_ROUTER_API_KEY w pliku "
+                f"{_ENV_PATH}"
+            )
+
+        self._model = model
+        self._client = OpenAI(
+            base_url="https://openrouter.ai/api/v1",
+            api_key=api_key,
+        )
+        logger.info(f"Zainicjalizowano klienta OpenRouter: {self._model}")
+
+    @property
+    def model_name(self) -> str:
+        return self._model
+
+    def classify(self, system_prompt: str, user_message: str) -> str:
+        response = self._client.chat.completions.create(
+            model=self._model,
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_message},
+            ],
+            temperature=0.0,
+        )
+        return response.choices[0].message.content or ""
+
+
+PROVIDERS = ("google", "groq", "ollama", "openrouter")
 
 
 def create_client(
@@ -156,6 +192,8 @@ def create_client(
         return GroqClient(model_name)
     elif resolved == "ollama":
         return OllamaClient(model_name, base_url=ollama_base_url)
+    elif resolved == "openrouter":
+        return OpenRouterClient(model_name)
     else:
         raise ValueError(
             f"Nieznany dostawca: '{resolved}'. "
