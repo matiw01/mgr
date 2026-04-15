@@ -10,11 +10,16 @@ from typing import Dict, List, Tuple
 # ── Mapowanie etykiet LIAR z TSV na kanoniczne nazwy ─────────────────────────
 LIAR_LABEL_MAP = {
     "true": "True",
-    "mostly-true": "Mostly True",
-    "half-true": "Half True",
-    "barely-true": "Mostly False",
+    "mostly-true": "True",
+    "half-true": "Manipulation",
+    "barely-true": "Manipulation",
     "false": "False",
-    "pants-fire": "Pants on Fire",
+    "pants-fire": "False",
+}
+
+# ── Mapowanie etykiet Demagog na kanoniczne nazwy ────────────────────────────
+DEMAGOG_LABEL_MAP = {
+    "Częściowa prawda": "Prawda",
 }
 
 
@@ -29,9 +34,11 @@ def load_demagog(filepath: str) -> Tuple[str, List[Dict[str, str]]]:
 
     records: List[Dict[str, str]] = []
     for item in data:
+        raw_label = item["Class"]
+        label = DEMAGOG_LABEL_MAP.get(raw_label, raw_label)
         records.append({
             "statement": item["Statement"],
-            "label": item["Class"],
+            "label": label,
             "author": item.get("Author", ""),
             "date": item.get("Date", ""),
         })

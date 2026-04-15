@@ -23,15 +23,12 @@ ze swoim pierwotnym kontekstem. W przypadku użycia stwierdzeń: \
 „około" „niemal" czy „ponad" zaokrąglenie musi mieścić się w normie \
 języka potocznego - z uwzględnieniem kontekstu wypowiedzi i wagi \
 problemu. Wypowiedź prawdziwa może zawierać drobne nieścisłości, \
-które nie wpływają na ogólny kontekst wypowiedzi.
-
-Częściowa prawda
-Wypowiedź uznajemy za częściową prawdę, gdy:
-zawiera połączenie informacji prawdziwych z fałszywymi. Obecność \
-nieprawdziwej informacji nie powoduje jednak, że teza zawarta w \
+które nie wpływają na ogólny kontekst wypowiedzi. \
+Wypowiedź uznajemy również za prawdę, gdy zawiera połączenie \
+informacji prawdziwych z drobnymi nieścisłościami, ale obecność \
+nieprawdziwej informacji nie powoduje, że teza zawarta w \
 weryfikowanym stwierdzeniu zostaje wypaczona bądź przeinaczona, \
-rzeczywiste dane w jeszcze większym stopniu przemawiają na korzyść \
-tezy autora.
+a rzeczywiste dane przemawiają na korzyść tezy autora.
 
 Fałsz
 Wypowiedź uznajemy za fałsz, gdy:
@@ -55,7 +52,7 @@ adwersarza, pozamerytoryczne sposoby argumentowania.
 
 W kolejnych wiadomościach otrzymasz wypowiedzi do zaklasyfikowania. \
 Dla każdej z nich odpowiedz w formacie:
-WERDYKT: <Prawda|Fałsz|Manipulacja|Częściowa prawda>
+WERDYKT: <Prawda|Fałsz|Manipulacja>
 UZASADNIENIE: <tekst uzasadnienia>
 """
 
@@ -64,7 +61,7 @@ Twierdzenie do zaklasyfikowania:
 {statement}
 
 Odpowiedz w formacie:
-WERDYKT: <Prawda|Fałsz|Manipulacja|Częściowa prawda>
+WERDYKT: <Prawda|Fałsz|Manipulacja>
 UZASADNIENIE: <tekst uzasadnienia>
 """
 
@@ -77,18 +74,18 @@ You are an expert fact-checker. Your task is to classify statements provided \
 to you into one of the following classes.
 
 Definitions of classes:
-True - The statement is accurate and there's nothing significant missing.
-Mostly True - The statement is accurate but needs clarification or additional information.
-Half True - The statement is partially accurate but leaves out important details \
-or takes things out of context.
-Mostly False - The statement contains an element of truth but ignores critical facts \
-that would give a different impression.
-False - The statement is not accurate.
-Pants on Fire - The statement is not accurate and makes a ridiculous claim.
+True - The statement is accurate and there's nothing significant missing. \
+This includes statements that are accurate but may need minor clarification \
+or additional information.
+Manipulation - The statement is partially accurate but leaves out important details \
+or takes things out of context. This also includes statements that contain \
+an element of truth but ignore critical facts that would give a different impression.
+False - The statement is not accurate. This includes statements that make \
+ridiculous or outlandish claims.
 
 In the following messages you will receive statements to classify. For each one, \
 reply in format:
-VERDICT: <True|Mostly True|Half True|Mostly False|False|Pants on Fire>
+VERDICT: <True|Manipulation|False>
 JUSTIFICATION: <text of justification>
 """
 
@@ -97,7 +94,7 @@ Statement to classify:
 {statement}
 
 Reply in format:
-VERDICT: <True|Mostly True|Half True|Mostly False|False|Pants on Fire>
+VERDICT: <True|Manipulation|False>
 JUSTIFICATION: <text of justification>
 """
 
@@ -129,9 +126,9 @@ def get_verdict_field(dataset_type: str) -> str:
 def get_valid_labels(dataset_type: str) -> List[str]:
     """Zwraca listę poprawnych etykiet dla danego zbioru."""
     if dataset_type == "demagog":
-        return ["Prawda", "Fałsz", "Manipulacja", "Częściowa prawda"]
+        return ["Prawda", "Fałsz", "Manipulacja"]
     elif dataset_type == "liar":
-        return ["True", "Mostly True", "Half True", "Mostly False", "False", "Pants on Fire"]
+        return ["True", "Manipulation", "False"]
     else:
         raise ValueError(f"Nieznany typ zbioru danych: {dataset_type}")
 
