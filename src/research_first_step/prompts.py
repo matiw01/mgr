@@ -25,7 +25,7 @@ języka potocznego - z uwzględnieniem kontekstu wypowiedzi i wagi \
 problemu. Wypowiedź prawdziwa może zawierać drobne nieścisłości, \
 które nie wpływają na ogólny kontekst wypowiedzi. \
 Wypowiedź uznajemy również za prawdę, gdy zawiera połączenie \
-informacji prawdziwych z drobnymi nieścisłościami, ale obecność \
+informacji prawdziwych z fałszywymi, ale obecność \
 nieprawdziwej informacji nie powoduje, że teza zawarta w \
 weryfikowanym stwierdzeniu zostaje wypaczona bądź przeinaczona, \
 a rzeczywiste dane przemawiają na korzyść tezy autora.
