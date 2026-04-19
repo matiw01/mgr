@@ -1,4 +1,8 @@
-# Fixed the "research" typo and using PowerShell loop
+param(
+    [Parameter(Mandatory=$true)]
+    [string]$Dataset
+)
+
 $models300 = @(
     "llama-3.1-8b-instant",
     "llama-3.3-70b-versatile",
@@ -13,6 +17,6 @@ $models300 = @(
 )
 
 foreach ($model in $models300) {
-    Write-Host "Running: $model"
-    python -m research_first_step -m $model -p groq -d data/test.tsv --limit 300
+    Write-Host "Running: $model on dataset: $Dataset"
+    python -m research_first_step -m $model -p groq -d $Dataset --limit 300
 }
