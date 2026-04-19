@@ -16,13 +16,3 @@ foreach ($model in $models300) {
     Write-Host "Running: $model"
     python -m research_first_step -m $model -p groq -d data/test.tsv --limit 300
 }
-
-$models250 = @(
-    "groq/compound",
-    "groq/compound-mini"
-)
-
-foreach ($model in $models250) {
-    Write-Host "Running: $model"
-    python -m research_first_step -m $model -p groq -d data/test.tsv --limit 250
-}
