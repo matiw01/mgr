@@ -116,13 +116,22 @@ def run_classification(
         truncated = statement[:100] + ("..." if len(statement) > 100 else "")
         logger.info(f"[{i + 1}/{total}] {truncated}")
 
-        try:
-            raw_response = client.classify(system_prompt, user_message)
-            predicted_label = extract_verdict(raw_response, verdict_field, valid_labels)
-        except Exception as e:
-            logger.error(f"  Błąd przy klasyfikacji: {e}")
-            raw_response = f"ERROR: {e}"
-            predicted_label = "ERROR"
+        max_retries = 3
+        raw_response = f"ERROR: no attempts made"
+        predicted_label = "ERROR"
+        for attempt in range(1, max_retries + 1):
+            try:
+                raw_response = client.classify(system_prompt, user_message)
+                predicted_label = extract_verdict(raw_response, verdict_field, valid_labels)
+            except Exception as e:
+                logger.error(f"  Błąd przy klasyfikacji (próba {attempt}/{max_retries}): {e}")
+                raw_response = f"ERROR: {e}"
+                predicted_label = "ERROR"
+            if predicted_label not in ("ERROR", "UNKNOWN"):
+                break
+            if attempt < max_retries:
+                logger.warning(f"  Wynik '{predicted_label}' – ponawiam zapytanie (próba {attempt + 1}/{max_retries})...")
+                time.sleep(1.0 * pow(2, attempt))
 
         result_entry = {
             "index": i,
