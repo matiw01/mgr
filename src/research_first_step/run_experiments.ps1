@@ -19,15 +19,15 @@ param(
 
 #openrouter
 $models300 = @(
-    "openrouter/elephant-alpha",
-    "google/gemma-4-26b-a4b-it:free",
-    "google/gemma-4-31b-it:free",
-    "minimax/minimax-m2.5:free",
-    "liquid/lfm-2.5-1.2b-thinking:free",
-    "liquid/lfm-2.5-1.2b-instruct:free",
-    "nvidia/nemotron-3-nano-30b-a3b:free",
-    "nvidia/nemotron-nano-12b-v2-vl:free",
-    "cognitivecomputations/dolphin-mistral-24b-venice-edition:free"
+    "openrouter/elephant-alpha"
+#    "google/gemma-4-26b-a4b-it:free",
+#    "google/gemma-4-31b-it:free",
+#    "minimax/minimax-m2.5:free",
+#    "liquid/lfm-2.5-1.2b-thinking:free",
+#    "liquid/lfm-2.5-1.2b-instruct:free",
+#    "nvidia/nemotron-3-nano-30b-a3b:free",
+#    "nvidia/nemotron-nano-12b-v2-vl:free",
+#    "cognitivecomputations/dolphin-mistral-24b-venice-edition:free"
 )
 
 foreach ($model in $models300) {
